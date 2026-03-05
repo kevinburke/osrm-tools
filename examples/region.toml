@@ -1,0 +1,24 @@
+# Region configuration for OSRM routing setup.
+# Copy this file and customize it for your region.
+
+# Human-readable name for the region.
+name = "Contra Costa County"
+
+# Geofabrik download URL for the base OSM data file.
+# Browse available extracts at https://download.geofabrik.de/
+geofabrik_url = "https://download.geofabrik.de/north-america/us/california/norcal-latest.osm.pbf"
+
+# OpenStreetMap relation ID for the region boundary.
+# Used to download a .poly file for clipping the OSM data.
+# See the README for how to find this.
+osm_relation_id = 396462
+
+# Port to run the OSRM routing server on.
+osrm_port = 9367
+
+# Docker platform flag (default: "linux/amd64").
+# docker_platform = "linux/amd64"
+
+# Path to a region-specific Lua penalty file (optional).
+# If set, it is mounted into the Docker container at /opt/region_penalties.lua.
+# penalty_file = "penalties/example-region.lua"
