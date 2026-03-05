@@ -28,15 +28,32 @@ PORT=$(toml_get "$REGION_CONFIG" osrm_port 5000)
 PLATFORM=$(toml_get "$REGION_CONFIG" docker_platform "linux/amd64")
 PENALTY_FILE=$(toml_get "$REGION_CONFIG" penalty_file "")
 
-if [ ! -f "profiles/bicycle.lua" ]; then
-    echo "Error: Custom bicycle profile not found at profiles/bicycle.lua"
+# Resolve the bicycle profile and street_preferences framework.
+# Look in the caller's directory first, then fall back to osrm-tools.
+OSRM_TOOLS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [ -f "profiles/bicycle.lua" ]; then
+    BICYCLE_PROFILE="$PWD/profiles/bicycle.lua"
+elif [ -f "$OSRM_TOOLS_DIR/profiles/bicycle.lua" ]; then
+    BICYCLE_PROFILE="$OSRM_TOOLS_DIR/profiles/bicycle.lua"
+else
+    echo "Error: Custom bicycle profile not found."
+    echo "Looked in: profiles/bicycle.lua and $OSRM_TOOLS_DIR/profiles/bicycle.lua"
     exit 1
 fi
 
-if [ ! -f "penalties/street_preferences.lua" ]; then
-    echo "Error: Street preferences module not found at penalties/street_preferences.lua"
+if [ -f "penalties/street_preferences.lua" ]; then
+    STREET_PREFS="$PWD/penalties/street_preferences.lua"
+elif [ -f "$OSRM_TOOLS_DIR/penalties/street_preferences.lua" ]; then
+    STREET_PREFS="$OSRM_TOOLS_DIR/penalties/street_preferences.lua"
+else
+    echo "Error: Street preferences module not found."
+    echo "Looked in: penalties/street_preferences.lua and $OSRM_TOOLS_DIR/penalties/street_preferences.lua"
     exit 1
 fi
+
+echo "Using bicycle profile: $BICYCLE_PROFILE"
+echo "Using street preferences: $STREET_PREFS"
 
 # Ensure data directory exists
 mkdir -p data/raw data/processed
@@ -81,11 +98,11 @@ fi
 echo "Step 1/3: Extract..."
 docker run --platform "$PLATFORM" \
     -v "$PWD/data:/data" \
-    -v "$PWD/profiles:/profiles" \
-    -v "$PWD/penalties/street_preferences.lua:/opt/street_preferences.lua" \
+    -v "$BICYCLE_PROFILE:/opt/bicycle.lua" \
+    -v "$STREET_PREFS:/opt/street_preferences.lua" \
     "${PENALTY_ARGS[@]}" \
     "$OSRM_IMAGE" \
-    osrm-extract -p /profiles/bicycle.lua "/data/${OSM_FILE#data/}"
+    osrm-extract -p /opt/bicycle.lua "/data/${OSM_FILE#data/}"
 
 # Step 2: Partition
 echo "Step 2/3: Partition..."
@@ -113,9 +130,9 @@ echo ""
 
 # Auto-start the server
 echo "Starting OSRM server..."
-OSRM_FILE=$(find data/processed -name "*.osrm" | head -1)
-if [ -z "$OSRM_FILE" ]; then
-    echo "Warning: No OSRM data file found after processing."
+OSRM_FILE="data/processed/$OSM_BASENAME.osrm"
+if [ ! -f "$OSRM_FILE.properties" ]; then
+    echo "Error: No OSRM data file found after processing (expected $OSRM_FILE.properties)."
     exit 1
 fi
 

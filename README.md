@@ -194,6 +194,15 @@ fmt.Println(cfg.Port())        // 9367
 fmt.Println(cfg.RegionSlug())  // "contra-costa-county"
 ```
 
+## Using osrm-tools from another project
+
+The scripts can be invoked from a consumer project outside this repository. The
+`rebuild-osrm-data.sh` and other scripts resolve `profiles/bicycle.lua` and
+`penalties/street_preferences.lua` by looking in the caller's working directory
+first, then falling back to the copies bundled with osrm-tools. This lets a
+consumer project override the bicycle profile or street preferences by placing
+its own versions at those paths, or rely on the defaults with no extra setup.
+
 ## Lua penalty system
 
 The routing profile (`profiles/bicycle.lua`) loads a generic penalty framework

@@ -78,6 +78,65 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
+func TestLeafletVersionInTemplate(t *testing.T) {
+	html := GenerateLeafletHTML(`{"type":"FeatureCollection","features":[]}`)
+	wantCSS := "https://unpkg.com/leaflet@" + LeafletVersion + "/dist/leaflet.css"
+	if !strings.Contains(html, wantCSS) {
+		t.Errorf("template missing CSS link %q", wantCSS)
+	}
+	wantJS := "https://unpkg.com/leaflet@" + LeafletVersion + "/dist/leaflet.js"
+	if !strings.Contains(html, wantJS) {
+		t.Errorf("template missing JS link %q", wantJS)
+	}
+}
+
+func TestGenerateLeafletHTML(t *testing.T) {
+	fc := NewFeatureCollection()
+	fc.Add(NewPointFeature(-122.4, 37.8, map[string]any{"name": "SF"}))
+	data, err := fc.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	html := GenerateLeafletHTML(string(data))
+
+	// Should not contain the placeholder.
+	if strings.Contains(html, "GEOJSON_PLACEHOLDER") {
+		t.Error("placeholder was not replaced")
+	}
+
+	// Should contain the GeoJSON data.
+	if !strings.Contains(html, `"name": "SF"`) {
+		t.Error("GeoJSON data not found in output")
+	}
+
+	// Basic HTML structure checks.
+	for _, want := range []string{
+		"<!doctype html>",
+		"<html lang=",
+		"</html>",
+		`<div id="map">`,
+		"L.map(",
+		"L.geoJSON(",
+		"L.tileLayer(",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("output missing expected string %q", want)
+		}
+	}
+}
+
+func TestGenerateLeafletHTMLEmptyCollection(t *testing.T) {
+	html := GenerateLeafletHTML(`{"type":"FeatureCollection","features":[]}`)
+
+	if strings.Contains(html, "GEOJSON_PLACEHOLDER") {
+		t.Error("placeholder was not replaced")
+	}
+	if !strings.Contains(html, `"FeatureCollection"`) {
+		t.Error("empty collection not present in output")
+	}
+}
+
 func TestGenerateGeoJSONioURL(t *testing.T) {
 	input := `{"type":"FeatureCollection","features":[]}`
 	result := GenerateGeoJSONioURL(input)

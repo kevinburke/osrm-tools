@@ -25,13 +25,15 @@ fi
 PORT=$(toml_get "$REGION_CONFIG" osrm_port 5000)
 PLATFORM=$(toml_get "$REGION_CONFIG" docker_platform "linux/amd64")
 
-# Find the OSRM data file
-OSRM_FILE=$(find data -name "*.osrm" | head -1)
-if [ -z "$OSRM_FILE" ]; then
+# Find the OSRM data file by looking for .osrm.properties (osrm-routed takes the
+# base path without the .properties extension).
+OSRM_PROPS=$(find data -name "*.osrm.properties" | head -1)
+if [ -z "$OSRM_PROPS" ]; then
     echo "Error: No OSRM data file found in data/"
     echo "Run ./scripts/rebuild-osrm-data.sh first."
     exit 1
 fi
+OSRM_FILE="${OSRM_PROPS%.properties}"
 
 echo "Using OSRM data: $OSRM_FILE"
 
