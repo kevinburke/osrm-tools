@@ -41,6 +41,8 @@ logs:
 
 # Go development
 test:
+	bash scripts/toml-get_test.sh
+	bash scripts/osrm-image_test.sh
 	go test -trimpath -race ./...
 
 build:

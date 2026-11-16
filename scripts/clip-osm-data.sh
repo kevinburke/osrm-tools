@@ -36,7 +36,8 @@ if [ ! -f "$POLY_FILE" ]; then
 fi
 
 # Find the downloaded OSM data file
-OSM_FILE=$(find data/raw -name "*.osm.pbf" | head -1)
+# Never select our previous output as the input on a repeated full rebuild.
+OSM_FILE=$(find data/raw -type f -name "*.osm.pbf" ! -name "clipped.osm.pbf" -print -quit)
 if [ -z "$OSM_FILE" ]; then
     echo "Error: No .osm.pbf file found in data/raw/"
     echo "Run ./scripts/download-osm-data.sh first."

@@ -8,6 +8,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=toml-get.sh
 source "$SCRIPT_DIR/toml-get.sh"
+# shellcheck source=osrm-image.sh
+source "$SCRIPT_DIR/osrm-image.sh"
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <region.toml>"
@@ -24,10 +26,12 @@ fi
 
 PORT=$(toml_get "$REGION_CONFIG" osrm_port 5000)
 PLATFORM=$(toml_get "$REGION_CONFIG" docker_platform "linux/amd64")
+PENALTY_FILE=$(toml_get "$REGION_CONFIG" penalty_file "")
+OSRM_IMAGE=$(osrm_image "$PENALTY_FILE")
 
 # Find the OSRM data file by looking for .osrm.properties (osrm-routed takes the
 # base path without the .properties extension).
-OSRM_PROPS=$(find data -name "*.osrm.properties" | head -1)
+OSRM_PROPS=$(find data -type f -name "*.osrm.properties" -print -quit)
 if [ -z "$OSRM_PROPS" ]; then
     echo "Error: No OSRM data file found in data/"
     echo "Run ./scripts/rebuild-osrm-data.sh first."
@@ -37,14 +41,7 @@ OSRM_FILE="${OSRM_PROPS%.properties}"
 
 echo "Using OSRM data: $OSRM_FILE"
 
-# Determine which OSRM image to use
-OSRM_IMAGE="docker.io/osrm/osrm-backend"
-if "${CONTAINER_ENGINE:-docker}" image inspect osrm-custom:latest >/dev/null 2>&1; then
-    OSRM_IMAGE="osrm-custom:latest"
-    echo "Using custom OSRM image: $OSRM_IMAGE"
-else
-    echo "Using official OSRM image: $OSRM_IMAGE"
-fi
+echo "Using OSRM image: $OSRM_IMAGE"
 
 # Stop existing server if running
 "${CONTAINER_ENGINE:-docker}" stop osrm-bike 2>/dev/null || true

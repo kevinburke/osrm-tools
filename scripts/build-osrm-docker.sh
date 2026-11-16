@@ -3,11 +3,12 @@
 # Build a custom OSRM Docker image from source.
 # Usage: ./build-osrm-docker.sh [source_dir]
 #
-# If source_dir is not specified, clones kevinburke/osrm-backend to ../osrm-backend.
+# If source_dir is not specified, use the standard GOPATH-style checkout.
+# Existing checkouts are built as-is; commit changes before building.
 
 set -euo pipefail
 
-OSRM_SOURCE_DIR="${1:-../osrm-backend}"
+OSRM_SOURCE_DIR="${1:-$HOME/src/github.com/kevinburke/osrm-backend}"
 OSRM_REPO_URL="https://github.com/kevinburke/osrm-backend.git"
 TARGET_BRANCH="develop"
 IMAGE_NAME="osrm-custom"
@@ -17,35 +18,31 @@ echo "Building custom OSRM Docker image..."
 
 if [ ! -d "$OSRM_SOURCE_DIR" ]; then
     echo "Cloning kevinburke/osrm-backend..."
-    git clone "$OSRM_REPO_URL" "$OSRM_SOURCE_DIR"
+    git clone --branch "$TARGET_BRANCH" "$OSRM_REPO_URL" "$OSRM_SOURCE_DIR"
 fi
 
 cd "$OSRM_SOURCE_DIR"
 
-CURRENT_ORIGIN=$(git remote get-url origin)
-if [[ "$CURRENT_ORIGIN" != *"kevinburke/osrm-backend"* ]]; then
-    echo "Warning: Repository origin is $CURRENT_ORIGIN"
-    echo "Expected kevinburke/osrm-backend. Updating remote..."
-    git remote set-url origin "$OSRM_REPO_URL"
+# Never switch branches, rewrite remotes, or pull into a developer checkout.
+# The image tags and embedded revision must identify the source actually built.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Error: OSRM source has local changes; commit them before building: $PWD" >&2
+    exit 1
 fi
-
-echo "Updating repository and checking out $TARGET_BRANCH..."
-git fetch origin
-git checkout "$TARGET_BRANCH"
-git pull origin "$TARGET_BRANCH"
 
 if [ ! -f "docker/Dockerfile" ]; then
     echo "Error: Dockerfile not found at docker/Dockerfile"
     exit 1
 fi
 
-CURRENT_COMMIT=$(git rev-parse --short HEAD)
+CURRENT_COMMIT=$(git rev-parse HEAD)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "Building from commit: $CURRENT_COMMIT on branch: $CURRENT_BRANCH"
 
 "${CONTAINER_ENGINE:-docker}" build \
     --platform linux/amd64 \
     --build-arg DOCKER_TAG="$IMAGE_TAG" \
+    --build-arg OSRM_GITSHA="$CURRENT_COMMIT" \
     --build-arg BUILD_CONCURRENCY="$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \
     -t "$IMAGE_NAME:$IMAGE_TAG" \
     -t "$IMAGE_NAME:$CURRENT_COMMIT" \

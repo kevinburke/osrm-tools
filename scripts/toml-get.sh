@@ -20,8 +20,9 @@ toml_get() {
     # Match lines like: key = "value" or key = 123
     # Strip comments, leading/trailing whitespace, and quotes.
     local value
-    value=$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$file" \
-        | head -1 \
+    # An absent optional key is successful and should use the default. Unlike
+    # grep, awk returns success for no match under the callers' pipefail mode.
+    value=$(awk -v key="$key" '$0 ~ "^[[:space:]]*" key "[[:space:]]*=" { print; exit }' "$file" \
         | sed 's/^[^=]*=[[:space:]]*//' \
         | sed 's/[[:space:]]*#.*//' \
         | sed 's/^"//; s/"$//' \

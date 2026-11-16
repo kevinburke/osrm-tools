@@ -31,7 +31,7 @@ fi
 
 mkdir -p data/raw
 echo "Downloading OSM data from: $GEOFABRIK_URL"
-curl --location --remote-name --output-dir data/raw "$GEOFABRIK_URL"
+curl --fail --show-error --location --remote-name --output-dir data/raw "$GEOFABRIK_URL"
 
 echo "Download complete. Files in data/raw/:"
 ls -lh data/raw/*.osm.pbf

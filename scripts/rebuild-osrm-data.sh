@@ -10,6 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=toml-get.sh
 source "$SCRIPT_DIR/toml-get.sh"
+# shellcheck source=osrm-image.sh
+source "$SCRIPT_DIR/osrm-image.sh"
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <region.toml>"
@@ -27,6 +29,11 @@ fi
 PORT=$(toml_get "$REGION_CONFIG" osrm_port 5000)
 PLATFORM=$(toml_get "$REGION_CONFIG" docker_platform "linux/amd64")
 PENALTY_FILE=$(toml_get "$REGION_CONFIG" penalty_file "")
+if [ -n "$PENALTY_FILE" ] && [ ! -f "$PENALTY_FILE" ]; then
+    echo "Error: configured penalty file not found: $PENALTY_FILE" >&2
+    exit 1
+fi
+OSRM_IMAGE=$(osrm_image "$PENALTY_FILE")
 
 # Resolve the bicycle profile and street_preferences framework.
 # Look in the caller's directory first, then fall back to osrm-tools.
@@ -59,9 +66,9 @@ echo "Using street preferences: $STREET_PREFS"
 mkdir -p data/raw data/processed
 
 # Find OSM data file (prefer clipped, then any .osm.pbf)
-OSM_FILE=$(find data/raw -name "clipped.osm.pbf" | head -1)
+OSM_FILE=$(find data/raw -type f -name "clipped.osm.pbf" -print -quit)
 if [ -z "$OSM_FILE" ]; then
-    OSM_FILE=$(find data/raw -name "*.osm.pbf" | head -1)
+    OSM_FILE=$(find data/raw -type f -name "*.osm.pbf" -print -quit)
 fi
 if [ -z "$OSM_FILE" ]; then
     echo "Error: No OSM data file found in data/raw/"
@@ -78,14 +85,7 @@ echo "Building OSRM data with custom bicycle profile..."
 "${CONTAINER_ENGINE:-docker}" stop osrm-bike 2>/dev/null || true
 "${CONTAINER_ENGINE:-docker}" rm osrm-bike 2>/dev/null || true
 
-# Determine which OSRM image to use
-OSRM_IMAGE="docker.io/osrm/osrm-backend"
-if "${CONTAINER_ENGINE:-docker}" image inspect osrm-custom:latest >/dev/null 2>&1; then
-    OSRM_IMAGE="osrm-custom:latest"
-    echo "Using custom OSRM image: $OSRM_IMAGE"
-else
-    echo "Using official OSRM image: $OSRM_IMAGE"
-fi
+echo "Using OSRM image: $OSRM_IMAGE"
 
 # Build volume mount args for penalties
 PENALTY_ARGS=()
@@ -96,7 +96,7 @@ fi
 
 # Step 1: Extract
 echo "Step 1/3: Extract..."
-"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --rm --platform "$PLATFORM" \
     -v "$PWD/data:/data" \
     -v "$BICYCLE_PROFILE:/opt/bicycle.lua" \
     -v "$STREET_PREFS:/opt/street_preferences.lua" \
@@ -106,14 +106,14 @@ echo "Step 1/3: Extract..."
 
 # Step 2: Partition
 echo "Step 2/3: Partition..."
-"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --rm --platform "$PLATFORM" \
     -v "$PWD/data/raw:/data" \
     "$OSRM_IMAGE" \
     osrm-partition /data/"$OSM_BASENAME.osrm"
 
 # Step 3: Customize
 echo "Step 3/3: Customize..."
-"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --rm --platform "$PLATFORM" \
     -v "$PWD/data/raw:/data" \
     "$OSRM_IMAGE" \
     osrm-customize /data/"$OSM_BASENAME.osrm"

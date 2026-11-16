@@ -275,9 +275,16 @@ If you need features from a custom OSRM fork:
 bash scripts/build-osrm-docker.sh [source_dir]
 ```
 
-This clones (or updates) `kevinburke/osrm-backend` and builds an
-`osrm-custom:latest` Docker image. The other scripts automatically prefer this
-image when it exists.
+This clones `kevinburke/osrm-backend` on `develop` if the source directory is
+missing, then builds an
+`osrm-custom:latest` image. Set `CONTAINER_ENGINE=podman` to use Podman.
+Existing source checkouts must be clean and are built at their current commit;
+the script does not pull, switch branches, or rewrite remotes. The full source
+revision is passed into the image build so linked worktrees work too.
+The other scripts prefer this image when it exists. Regions with a configured
+`penalty_file` require it: the stock image does not expose the segment node IDs
+needed for node penalties, so rebuild and start fail if the custom image is
+missing. A configured penalty file must also exist before rebuilding.
 
 ## Finding an OSM relation ID
 
