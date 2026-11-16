@@ -9,7 +9,7 @@ server.
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (for running OSRM)
-- [Go](https://go.dev/) 1.22+ (for the library packages)
+- [Go](https://go.dev/) 1.26+ (for the library packages)
 - [osmium-tool](https://osmcode.org/osmium-tool/) (for clipping OSM data to a
   region boundary; `brew install osmium-tool`)
 - [GEOS](https://libgeos.org/) (only needed if using the `hull` package for
@@ -320,3 +320,23 @@ https://www.openstreetmap.org/relation/<ID>
 
 For example: https://www.openstreetmap.org/relation/396462 shows Contra Costa
 County, CA.
+
+## Development and CI
+
+Use Go 1.26 or newer (the current toolchain is pinned in `go.mod`). On
+Debian, install `build-essential libgeos-dev pkg-config zlib1g-dev`; data
+clipping also needs `osmium-tool`. On macOS, use `brew install geos pkg-config osmium-tool shellcheck`.
+
+`make build` writes command binaries to `tmp/`. `make ci` checks module
+tidiness and formatting with differ, runs vet and Staticcheck, runs the
+race-enabled tests, and builds the commands. CI tools are versioned in
+`go.mod`; run `go get -u ./...` and `go get -u tool` to refresh dependency
+and tool pins, then `go mod tidy` and `make ci` before committing.
+
+Pushes to the private git-server run `.buildkite/pipeline.yml` on the shared
+CI pool. The dev VM's dependencies and source checkouts are managed by
+`caracal-server`; see that repo's `docs/dev.md`.
+
+The OSRM scripts accept `CONTAINER_ENGINE=podman` for rootless containers
+on dev. This only selects the engine; OSM data generation and server startup
+remain explicit Make targets.

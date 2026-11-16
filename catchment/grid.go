@@ -58,8 +58,7 @@ func (c *Calculator) GenerateGrid(ctx context.Context) []geo.Point {
 
 				isNear, _, err := c.OSRMClient.IsPointNearRoad(ctx, profile, point, c.MaxRoadDistance)
 				if err != nil {
-					var critErr *osrm.CriticalError
-					if errors.As(err, &critErr) {
+					if _, ok := errors.AsType[*osrm.CriticalError](err); ok {
 						c.Logger.Error("Fatal error during road proximity check", "error", err)
 						return grid
 					}

@@ -4,6 +4,7 @@
 #   make download REGION_CONFIG=examples/region.toml
 
 REGION_CONFIG ?= examples/region.toml
+export CONTAINER_ENGINE ?= docker
 
 .PHONY: download get-boundary clip rebuild start stop restart status logs test build fmt lint
 
@@ -33,25 +34,37 @@ stop:
 restart: stop start
 
 status:
-	docker ps | grep osrm-bike || echo "Server not running"
+	$(CONTAINER_ENGINE) ps --filter name=osrm-bike
 
 logs:
-	docker logs -f osrm-bike
+	$(CONTAINER_ENGINE) logs --follow osrm-bike
 
 # Go development
 test:
-	GO111MODULE=on go test -trimpath ./...
+	go test -trimpath -race ./...
 
 build:
-	GO111MODULE=on go build -trimpath ./...
+	mkdir -p tmp
+	go build -trimpath -o tmp/ ./...
 
 fmt:
-	GO111MODULE=on go fmt ./...
-	goimports -w .
+	go fmt ./...
+	go tool goimports -w .
 
 lint:
-	GO111MODULE=on go vet ./...
+	go vet -trimpath ./...
+	go tool staticcheck ./...
 	shellcheck --exclude=SC1091 scripts/*.sh
 
 install-tools:
 	brew install osmium-tool shellcheck
+
+# Tools are pinned in go.mod and installed by `go tool` on demand.
+.PHONY: ci check-generated lint
+ci: check-generated lint test build
+
+check-generated:
+	go tool differ go mod tidy
+	go tool differ go fmt ./...
+	go tool differ go tool goimports -w .
+	go tool differ go generate ./...

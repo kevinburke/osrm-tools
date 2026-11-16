@@ -38,8 +38,8 @@ OSRM_FILE="${OSRM_PROPS%.properties}"
 echo "Using OSRM data: $OSRM_FILE"
 
 # Determine which OSRM image to use
-OSRM_IMAGE="osrm/osrm-backend"
-if docker image inspect osrm-custom:latest >/dev/null 2>&1; then
+OSRM_IMAGE="docker.io/osrm/osrm-backend"
+if "${CONTAINER_ENGINE:-docker}" image inspect osrm-custom:latest >/dev/null 2>&1; then
     OSRM_IMAGE="osrm-custom:latest"
     echo "Using custom OSRM image: $OSRM_IMAGE"
 else
@@ -47,11 +47,11 @@ else
 fi
 
 # Stop existing server if running
-docker stop osrm-bike 2>/dev/null || true
-docker rm osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" stop osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" rm osrm-bike 2>/dev/null || true
 
 # Start server
-docker run -d --platform "$PLATFORM" --name osrm-bike \
+"${CONTAINER_ENGINE:-docker}" run -d --platform "$PLATFORM" --name osrm-bike \
     -p "${PORT}:${PORT}" \
     -v "$PWD/data:/data" \
     "$OSRM_IMAGE" \

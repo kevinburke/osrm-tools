@@ -6,6 +6,6 @@
 set -euo pipefail
 
 echo "Stopping OSRM server..."
-docker stop osrm-bike 2>/dev/null || true
-docker rm osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" stop osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" rm osrm-bike 2>/dev/null || true
 echo "Server stopped."

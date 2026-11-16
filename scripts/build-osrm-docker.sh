@@ -43,7 +43,7 @@ CURRENT_COMMIT=$(git rev-parse --short HEAD)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "Building from commit: $CURRENT_COMMIT on branch: $CURRENT_BRANCH"
 
-docker build \
+"${CONTAINER_ENGINE:-docker}" build \
     --platform linux/amd64 \
     --build-arg DOCKER_TAG="$IMAGE_TAG" \
     --build-arg BUILD_CONCURRENCY="$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \

@@ -63,8 +63,7 @@ func (c *Calculator) RunSampleDebug(ctx context.Context, grid []geo.Point, numSa
 		for _, dest := range c.Destinations {
 			route, err := c.OSRMClient.GetRouteWithGeometry(ctx, c.Profile, point, dest.Point)
 			if err != nil {
-				var critErr *osrm.CriticalError
-				if errors.As(err, &critErr) {
+				if critErr, ok := errors.AsType[*osrm.CriticalError](err); ok {
 					return critErr
 				}
 				c.Logger.Warn("Could not route to destination",

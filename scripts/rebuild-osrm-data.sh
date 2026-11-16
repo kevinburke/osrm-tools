@@ -75,12 +75,12 @@ echo "Found OSM data: $OSM_FILE"
 echo "Building OSRM data with custom bicycle profile..."
 
 # Stop existing server if running
-docker stop osrm-bike 2>/dev/null || true
-docker rm osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" stop osrm-bike 2>/dev/null || true
+"${CONTAINER_ENGINE:-docker}" rm osrm-bike 2>/dev/null || true
 
 # Determine which OSRM image to use
-OSRM_IMAGE="osrm/osrm-backend"
-if docker image inspect osrm-custom:latest >/dev/null 2>&1; then
+OSRM_IMAGE="docker.io/osrm/osrm-backend"
+if "${CONTAINER_ENGINE:-docker}" image inspect osrm-custom:latest >/dev/null 2>&1; then
     OSRM_IMAGE="osrm-custom:latest"
     echo "Using custom OSRM image: $OSRM_IMAGE"
 else
@@ -96,7 +96,7 @@ fi
 
 # Step 1: Extract
 echo "Step 1/3: Extract..."
-docker run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
     -v "$PWD/data:/data" \
     -v "$BICYCLE_PROFILE:/opt/bicycle.lua" \
     -v "$STREET_PREFS:/opt/street_preferences.lua" \
@@ -106,14 +106,14 @@ docker run --platform "$PLATFORM" \
 
 # Step 2: Partition
 echo "Step 2/3: Partition..."
-docker run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
     -v "$PWD/data/raw:/data" \
     "$OSRM_IMAGE" \
     osrm-partition /data/"$OSM_BASENAME.osrm"
 
 # Step 3: Customize
 echo "Step 3/3: Customize..."
-docker run --platform "$PLATFORM" \
+"${CONTAINER_ENGINE:-docker}" run --platform "$PLATFORM" \
     -v "$PWD/data/raw:/data" \
     "$OSRM_IMAGE" \
     osrm-customize /data/"$OSM_BASENAME.osrm"
@@ -136,7 +136,7 @@ if [ ! -f "$OSRM_FILE.properties" ]; then
     exit 1
 fi
 
-docker run -d --platform "$PLATFORM" --name osrm-bike \
+"${CONTAINER_ENGINE:-docker}" run -d --platform "$PLATFORM" --name osrm-bike \
     -p "${PORT}:${PORT}" \
     -v "$PWD/data:/data" \
     "$OSRM_IMAGE" \
